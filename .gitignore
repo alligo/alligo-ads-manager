@@ -2,3 +2,4 @@
 config.php
 banners/*
 !banners/.gitkeep
+test.html

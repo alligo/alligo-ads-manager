@@ -20,6 +20,7 @@ class AlligoAdsManager
 
     protected $errors = [];
     protected $config = null;
+    protected $banner_now = null;
 
     public function __construct($config)
     {
@@ -50,11 +51,26 @@ class AlligoAdsManager
         return $value;
     }
 
+    private function _getRandonBanner($cat)
+    {
+        $key = array_rand($this->config->banners[$cat]);
+        //var_dump($this->config->banners[$cat], $key);
+        $this->banner_now = $this->config->banners[$cat][$key];
+        if (empty($this->banner_now['name']) || empty($this->banner_now['url']) || empty($this->banner_now['banners'])) {
+            $this->errors[] = "Banner configuration is not valid (" . (json_encode($this->banner_now)) . ").";
+            //print_r($this->banner_now);
+            return false;
+        }
+        return $this->banner_now;
+    }
+
     private function _prepare()
     {
         $cat = $this->_get('cat');
-        if (empty($config->banners[$cat])) {
+        if (empty($this->config->banners[$cat])) {
             $this->errors[] = "Category not found (" . (empty($cat) ? "empty" : $cat) . ").";
+        } else {
+            $this->_getRandonBanner($cat);
         }
         return count($this->errors) ? false : true;
     }
@@ -69,16 +85,64 @@ class AlligoAdsManager
         return $this->_prepare();
     }
 
+    public function isAdmin()
+    {
+        if (!isset($this->config->admin_term) || !$this->_get($this->config->admin_term)) {
+            return false;
+        }
+        return true;
+    }
+
+    public function printHtml()
+    {
+        $items = $this->config->banners;
+        $html = [];
+        $html[] = '<!doctype html>';
+        $html[] = '<html lang="pt-BR">';
+        $html[] = "<head>";
+        $html[] = '  <title>Admin</title>';
+        $html[] = '  <meta charset="UTF-8">';
+        $html[] = '  <meta name="robots" content="noindex, follow"/>';
+        $html[] = '</head>';
+        $html[] = '<body>';
+        $html[] = "<h1>Alligo Ads Manager</h1>";
+        foreach ($items AS $category => $values) {
+            $html[] = $this->printHTMLItem($values, $category);
+        }
+
+
+        $html[] = '</body>';
+        $html[] = '</html>';
+        echo implode(PHP_EOL, $html);
+    }
+
+    protected function printHTMLItem($group, $title)
+    {
+        $html = [];
+        //var_dump($group);
+
+        $html[] = "<h2>$title</h2>";
+        $html[] = '<p>Qtd: ' . (empty($group) ? "zero" : count($group)) . ' </p>';
+        $html[] = '<textarea style="width: 760px; height: 100px;">';
+        $html[] = '<!-- Banner, start -->';
+        $html[] = '<iframe src="' . $this->config->adsbaseurl . '?cat=' . $title . '" frameBorder="0" scrolling="no"> </iframe>';
+        $html[] = '<!-- Banner, end -->';
+        $html[] = '</textarea>';
+
+        return implode(PHP_EOL, $html);
+    }
+
     /**
      * Echo banner html and headers
      */
     public function printBanner()
     {
-        $name = 'titulo';
-        $link = 'http://teste.com';
-        $width = '468';
-        $heigh = '60';
-        $url = 'banners/banner-468x60-001.jpg';
+        $name = $this->banner_now['name'];
+        $link = $this->banner_now['url'];
+        //var_dump($this->banner_now['banners']);
+        $width = $this->banner_now['banners']['width'];
+        $height = $this->banner_now['banners']['height'];
+        $src = $this->banner_now['banners']['src'];
 
         $html = <<< BANNER
 <!doctype html>
@@ -100,7 +164,7 @@ class AlligoAdsManager
   </head>
   <body>
     <a href="$link" target="_parent">
-      <img alt="$name" width="$width" height="$heigh" src="$url"/>
+      <img alt="$name" width="$width" height="$height" src="$src"/>
     </a>
   </body>
 </html>      
@@ -118,13 +182,18 @@ BANNER;
     public function raiseError()
     {
         $html = '<!-- Errors: ' . json_encode($this->errors) . '-->';
+        //var_dump($this->config);
         echo $html;
     }
 }
 
 $AAM = new AlligoAdsManager($config);
 if ($AAM->isOk()) {
-    $AAM->printBanner();
+    if ($AAM->isAdmin()) {
+        $AAM->printHtml();
+    } else {
+        $AAM->printBanner();
+    }
 } else {
     $AAM->raiseError();
 }
