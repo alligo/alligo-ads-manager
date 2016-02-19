@@ -1,0 +1,4 @@
+/nbproject/
+config.php
+banners/*
+!banners/.gitkeep
