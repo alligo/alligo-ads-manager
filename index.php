@@ -43,10 +43,7 @@ class AlligoAdsManager
         $value = $default;
         if (filter_input(INPUT_GET, $name)) {
             $value = filter_input(INPUT_GET, $name, FILTER_SANITIZE_STRING);
-            //echo $tempval;
             settype($tempval, $cast);
-            //var_dump($tempval, $cast, settype($tempval, $cast));
-            //echo $value;
         }
         return $value;
     }
@@ -64,6 +61,31 @@ class AlligoAdsManager
         return $this->banner_now;
     }
 
+    /**
+     * Return specific URL params
+     *
+     * @return String
+     */
+    private function _getUrlParams()
+    {
+        $vars = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+        $result = [];
+        foreach ($vars AS $item) {
+            $val = $this->_get($item);
+            if ($val) {
+                $result[$item] = $val;
+            }
+        }
+        //var_dump($result);
+        return (empty($result) ? '' : '&' . http_build_query($result));
+    }
+
+    /**
+     * Prepare the selection of randon banners, and return success or failture
+     * of this task
+     *
+     * @return  Boolean
+     */
     private function _prepare()
     {
         $cat = $this->_get('cat');
@@ -76,6 +98,19 @@ class AlligoAdsManager
     }
 
     /**
+     * Is requested URL for the Admin?
+     *
+     * @return boolean
+     */
+    public function isAdmin()
+    {
+        if (!isset($this->config->admin_term) || !$this->_get($this->config->admin_term)) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Can we print a banner?
      *
      * @return boolean
@@ -85,15 +120,11 @@ class AlligoAdsManager
         return $this->_prepare();
     }
 
-    public function isAdmin()
-    {
-        if (!isset($this->config->admin_term) || !$this->_get($this->config->admin_term)) {
-            return false;
-        }
-        return true;
-    }
-
-    public function printHtml()
+    /**
+     * Print Admin HTML, used to help which code to share
+     *
+     */
+    public function printAdminHtml()
     {
         $items = $this->config->banners;
         $html = [];
@@ -103,44 +134,53 @@ class AlligoAdsManager
         $html[] = '  <title>Admin</title>';
         $html[] = '  <meta charset="UTF-8">';
         $html[] = '  <meta name="robots" content="noindex, follow"/>';
+        $html[] = '  <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">';
         $html[] = '</head>';
         $html[] = '<body>';
-        $html[] = "<h1>Alligo Ads Manager</h1>";
+        $html[] = '<div class="container">';
+        $html[] = '<div class="page-header"><h1>Alligo Ads Manager</h1></div>';
         $html[] = "<h2>Params</h2>";
         $html[] = "<form action=''>";
         $html[] = '<input type="hidden" name="' . $this->config->admin_term . '" value="1">';
-        $html[] = '<p><label>Origem da campanha (utm_source)*: <input type="text" name="utm_source"></label>';
-        $html[] = '<p><label>Mídia da campanha (utm_medium)*: <input type="text" name="utm_medium"></label>';
-        $html[] = '<p><label>Nome da campanha (utm_campaign)*: <input type="text" name="utm_campaign"></label>';
-        $html[] = '<p><label>Conteúdo da campanha (utm_content): <input type="text" name="utm_source"></label>';
-        $html[] = '<p><label>Termo da campanha (utm_term): <input type="text" name="utm_source"></label>';
-        $html[] = "<p><button type=submit>Apply</button>";
+        $html[] = '<p><label>Origem da campanha (utm_source)*: <input type="text" name="utm_source" value="' . $this->_get('utm_source') . '" required></label>';
+        $html[] = '<p><label>Mídia da campanha (utm_medium)*: <input type="text" name="utm_medium" value="' . $this->_get('utm_medium') . '" required></label>';
+        $html[] = '<p><label>Nome da campanha (utm_campaign)*: <input type="text" name="utm_campaign" value="' . $this->_get('utm_campaign') . '" required></label>';
+        $html[] = '<p><label>Conteúdo da campanha (utm_content): <input type="text" name="utm_content" value="' . $this->_get('utm_content') . '"></label>';
+        $html[] = '<p><label>Termo da campanha (utm_term): <input type="text" name="utm_term" value="' . $this->_get('utm_term') . '"></label>';
+        $html[] = '<p><button type="submit" class="btn btn-success">Apply</button>';
         $html[] = "</form>";
         $html[] = "<h2>Code</h2>";
         foreach ($items AS $category => $values) {
-            $html[] = $this->printHTMLItem($values, $category);
+            $html[] = $this->printAdminHTMLItem($values, $category);
         }
 
+        $html[] = '</div>';
         $html[] = '</body>';
         $html[] = '</html>';
         echo implode(PHP_EOL, $html);
     }
 
-    protected function printHTMLItem($group, $title)
+    /**
+     * Helper for printAdminHtml(). Print block for each group
+     *
+     * @param  String  $group
+     * @param  String  $title
+     * @return String
+     */
+    protected function printAdminHTMLItem($group, $title)
     {
         $html = [];
-        //var_dump($group);
+        $click_url = $this->config->adsbaseurl . '?cat=' . $title . $this->_getUrlParams();
 
-        $html[] = "<h3>$title</h3>";
-        $html[] = '<p>Qtd: ' . (empty($group) ? "zero" : count($group)) . ' </p>';
+        $html[] = '<h3>' . $title . ' <span class="badge">' . (empty($group) ? "zero" : count($group)) . '</span> </h3>';
         if (!empty($group)) {
             $bannernow = $group[0];
             //var_dump($bannernow);
-            $html[] = '<textarea style="width: 760px; height: 100px;">';
+            $html[] = '<textarea style="width: 100%; height: 130px;">';
             $html[] = '<!-- Banner ' . $title . '-->';
-            $html[] = '<iframe width="' . $bannernow['banners']['width'] 
-                . '" height="' . $bannernow['banners']['height'] . '" src="' . $this->config->adsbaseurl 
-                . '?cat=' . $title . '" style="width:728px; max-width: 100%; height: auto; border: 0" frameBorder="0" scrolling="no" frameBorder="0" scrolling="no"> </iframe>';
+            $html[] = '<iframe width="' . $bannernow['banners']['width']
+                . '" height="' . $bannernow['banners']['height'] . '" src="' . $click_url
+                . '" style="width:728px; max-width: 100%; height: auto; border: 0" frameBorder="0" scrolling="no" frameBorder="0" scrolling="no"> </iframe>';
             $html[] = '</textarea>';
         }
 
@@ -158,6 +198,7 @@ class AlligoAdsManager
         $width = $this->banner_now['banners']['width'];
         $height = $this->banner_now['banners']['height'];
         $src = $this->banner_now['banners']['src'];
+        $customheadercode = empty($this->config->customheadercode) ? '' : $this->config->customheadercode;
 
         $html = <<< BANNER
 <!doctype html>
@@ -166,6 +207,7 @@ class AlligoAdsManager
    <meta charset="UTF-8">
     <title>$name</title>
     <meta name="robots" content="noindex, follow"/>
+    $customheadercode
     <style>
       * {
         margin: 0;
@@ -204,7 +246,7 @@ BANNER;
 
 $AAM = new AlligoAdsManager($config);
 if ($AAM->isAdmin()) {
-    $AAM->printHtml();
+    $AAM->printAdminHtml();
 } else if ($AAM->isOk()) {
     $AAM->printBanner();
 } else {
