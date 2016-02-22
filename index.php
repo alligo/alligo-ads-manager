@@ -106,10 +106,20 @@ class AlligoAdsManager
         $html[] = '</head>';
         $html[] = '<body>';
         $html[] = "<h1>Alligo Ads Manager</h1>";
+        $html[] = "<h2>Params</h2>";
+        $html[] = "<form action=''>";
+        $html[] = '<input type="hidden" name="' . $this->config->admin_term . '" value="1">';
+        $html[] = '<p><label>Origem da campanha (utm_source)*: <input type="text" name="utm_source"></label>';
+        $html[] = '<p><label>Mídia da campanha (utm_medium)*: <input type="text" name="utm_medium"></label>';
+        $html[] = '<p><label>Nome da campanha (utm_campaign)*: <input type="text" name="utm_campaign"></label>';
+        $html[] = '<p><label>Conteúdo da campanha (utm_content): <input type="text" name="utm_source"></label>';
+        $html[] = '<p><label>Termo da campanha (utm_term): <input type="text" name="utm_source"></label>';
+        $html[] = "<p><button type=submit>Apply</button>";
+        $html[] = "</form>";
+        $html[] = "<h2>Code</h2>";
         foreach ($items AS $category => $values) {
             $html[] = $this->printHTMLItem($values, $category);
         }
-
 
         $html[] = '</body>';
         $html[] = '</html>';
@@ -121,13 +131,18 @@ class AlligoAdsManager
         $html = [];
         //var_dump($group);
 
-        $html[] = "<h2>$title</h2>";
+        $html[] = "<h3>$title</h3>";
         $html[] = '<p>Qtd: ' . (empty($group) ? "zero" : count($group)) . ' </p>';
-        $html[] = '<textarea style="width: 760px; height: 100px;">';
-        $html[] = '<!-- Banner, start -->';
-        $html[] = '<iframe src="' . $this->config->adsbaseurl . '?cat=' . $title . '" frameBorder="0" scrolling="no"> </iframe>';
-        $html[] = '<!-- Banner, end -->';
-        $html[] = '</textarea>';
+        if (!empty($group)) {
+            $bannernow = $group[0];
+            //var_dump($bannernow);
+            $html[] = '<textarea style="width: 760px; height: 100px;">';
+            $html[] = '<!-- Banner ' . $title . '-->';
+            $html[] = '<iframe width="' . $bannernow['banners']['width'] 
+                . '" height="' . $bannernow['banners']['height'] . '" src="' . $this->config->adsbaseurl 
+                . '?cat=' . $title . '" style="width:728px; max-width: 100%; height: auto; border: 0" frameBorder="0" scrolling="no" frameBorder="0" scrolling="no"> </iframe>';
+            $html[] = '</textarea>';
+        }
 
         return implode(PHP_EOL, $html);
     }
@@ -156,7 +171,7 @@ class AlligoAdsManager
         margin: 0;
         padding: 0;
       }
-      #gopleme {
+      #ad {
         max-width: 100%;
         height: auto;
       }
@@ -164,7 +179,7 @@ class AlligoAdsManager
   </head>
   <body>
     <a href="$link" target="_parent">
-      <img alt="$name" width="$width" height="$height" src="$src"/>
+      <img alt="$name" width="$width" height="$height" id="ad" alt="$name" src="$src"/>
     </a>
   </body>
 </html>      
@@ -188,12 +203,10 @@ BANNER;
 }
 
 $AAM = new AlligoAdsManager($config);
-if ($AAM->isOk()) {
-    if ($AAM->isAdmin()) {
-        $AAM->printHtml();
-    } else {
-        $AAM->printBanner();
-    }
+if ($AAM->isAdmin()) {
+    $AAM->printHtml();
+} else if ($AAM->isOk()) {
+    $AAM->printBanner();
 } else {
     $AAM->raiseError();
 }
