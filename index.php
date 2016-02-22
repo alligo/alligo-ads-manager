@@ -104,7 +104,7 @@ class AlligoAdsManager
      */
     public function isAdmin()
     {
-        if (!isset($this->config->admin_term) || !$this->_get($this->config->admin_term)) {
+        if (!isset($this->config->admin_token) || !$this->_get($this->config->admin_token)) {
             return false;
         }
         return true;
@@ -141,7 +141,7 @@ class AlligoAdsManager
         $html[] = '<div class="page-header"><h1>Alligo Ads Manager</h1></div>';
         $html[] = "<h2>Params</h2>";
         $html[] = "<form action=''>";
-        $html[] = '<input type="hidden" name="' . $this->config->admin_term . '" value="1">';
+        $html[] = '<input type="hidden" name="' . $this->config->admin_token . '" value="1">';
         $html[] = '<p><label>Origem da campanha (utm_source)*: <input type="text" name="utm_source" value="' . $this->_get('utm_source') . '" required></label>';
         $html[] = '<p><label>Mídia da campanha (utm_medium)*: <input type="text" name="utm_medium" value="' . $this->_get('utm_medium') . '" required></label>';
         $html[] = '<p><label>Nome da campanha (utm_campaign)*: <input type="text" name="utm_campaign" value="' . $this->_get('utm_campaign') . '" required></label>';
@@ -180,7 +180,8 @@ class AlligoAdsManager
             $html[] = '<!-- Banner ' . $title . '-->';
             $html[] = '<iframe width="' . $bannernow['banners']['width']
                 . '" height="' . $bannernow['banners']['height'] . '" src="' . $click_url
-                . '" style="width:728px; max-width: 100%; height: auto; border: 0" frameBorder="0" scrolling="no" frameBorder="0" scrolling="no"> </iframe>';
+                . '" style="width:' . $bannernow['banners']['width'] 
+                . 'px; max-width: 100%; height: auto; border: 0" frameBorder="0" scrolling="no" frameBorder="0" scrolling="no"> </iframe>';
             $html[] = '</textarea>';
         }
 
@@ -239,7 +240,15 @@ BANNER;
     public function raiseError()
     {
         $html = '<!-- Errors: ' . json_encode($this->errors) . '-->';
-        //var_dump($this->config);
+
+        $errorinfo = '[' . date(DATE_ATOM) . '] URL: (' . "//{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}" . ')'
+            . ' Referer: (' . (isset($_SERVER["HTTP_REFERER"]) ? $_SERVER["HTTP_REFERER"] : "empty") . ')'
+            . ' Errors: (' . json_encode($this->errors) . ')' . "\r\n";
+
+        if (!file_put_contents(__DIR__ . '/error.log', $errorinfo, FILE_APPEND)) {
+            // cannot write to log
+        }
+
         echo $html;
     }
 }
